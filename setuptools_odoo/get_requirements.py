@@ -87,6 +87,7 @@ def _get_requirements(
         # Exclude local addons as they cannot be considered to be dependencies
         # of addons in addons_dir.
         requirements = {r for r in requirements if _get_req_name(r) not in local_addons}
+    print("Locals: %s", local_addons)
     return sorted(requirements, key=lambda s: s.lower())
 
 
