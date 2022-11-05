@@ -57,25 +57,32 @@ def _get_requirements(
     addons_dir,
     get_metadata_overrides=_get_metadata_overrides_from_setup_dir,
     include_addons=False,
+    dependencies=False,
 ):
     requirements = set()
     local_addons = set()
-    for addon_name in os.listdir(addons_dir):
-        addon_dir = os.path.join(addons_dir, addon_name)
-        if not is_installable_addon(addon_dir):
-            continue
-        # TODO this is a hack and we should run proper metadata preparation instead,
-        #      using build.utils.project_wheel_metadata()
-        overrides = get_metadata_overrides(addons_dir, addon_name)
-        # We don't care about the version here, so improve performance
-        # by skipping git post version lookup.
-        overrides["post_version_strategy_override"] = STRATEGY_NONE
-        metadata = get_addon_metadata(addon_dir, **overrides)
-        local_addons.add(_canonicalize(metadata.get("Name")))
-        for install_require in metadata.get_all("Requires-Dist"):
-            if not include_addons and ODOO_REQ_RE.match(_get_req_name(install_require)):
+    addons_dir_list = [addons_dir]
+    if dependencies:
+        for d in os.listdir(dependencies):
+            addons_dir_list.append(os.path.join(dependencies, d))
+
+    for addon_dir in addons_dir_list:
+        for addon_name in os.listdir(addons_dir):
+            addon_dir = os.path.join(addons_dir, addon_name)
+            if not is_installable_addon(addon_dir):
                 continue
-            requirements.add(install_require)
+            # TODO this is a hack and we should run proper metadata preparation instead,
+            #      using build.utils.project_wheel_metadata()
+            overrides = get_metadata_overrides(addons_dir, addon_name)
+            # We don't care about the version here, so improve performance
+            # by skipping git post version lookup.
+            overrides["post_version_strategy_override"] = STRATEGY_NONE
+            metadata = get_addon_metadata(addon_dir, **overrides)
+            local_addons.add(_canonicalize(metadata.get("Name")))
+            for install_require in metadata.get_all("Requires-Dist"):
+                if not include_addons and ODOO_REQ_RE.match(_get_req_name(install_require)):
+                    continue
+                requirements.add(install_require)
     if include_addons:
         # Exclude local addons as they cannot be considered to be dependencies
         # of addons in addons_dir.
@@ -122,9 +129,15 @@ def main(args=None):
             "python external dependencies (default: false)"
         ),
     )
+    parser.add_argument(
+        "--dependencies-dir",
+        "-a",
+        default="",
+        help="addons directory (default: )",
+    )
     args = parser.parse_args(args)
     requirements = _get_requirements(
-        args.addons_dir, include_addons=args.include_addons
+        args.addons_dir, include_addons=args.include_addons, dependencies=args.dependencies_dir,
     )
     if args.output == "-":
         _render(requirements, args.header, sys.stdout)
