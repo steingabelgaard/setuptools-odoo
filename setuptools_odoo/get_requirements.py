@@ -62,7 +62,7 @@ def _get_requirements(
     requirements = set()
     local_addons = set()
     addons_dir_list = [addons_dir]
-    if dependencies:
+    if dependencies and os.path.exists(dependencies)
         for d in os.listdir(dependencies):
             addons_dir_list.append(os.path.join(dependencies, d))
 
